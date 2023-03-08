@@ -175,6 +175,7 @@ func (PG *PgStorage) GetOrdersProcess(ctx context.Context) ([]models.Order, erro
 		}
 		orders = append(orders, order)
 	}
+	defer rows.Close()
 	return orders, rows.Err()
 }
 
@@ -189,29 +190,35 @@ func (PG *PgStorage) GetUserBalance(ctx context.Context, userLogin string) (floa
 }
 
 func (PG *PgStorage) AddWithdraw(ctx context.Context, withdraw models.Withdraw) error {
-	query := `
-		INSERT INTO public.withdraws (login, numberorder, sum, uploaded)
-		SELECT $1, $2, $3, $4
+	var canWithdraw bool
+	err := PG.connect.QueryRowContext(ctx, `
+		SELECT sum_order >= sum_withdraws + $3
 		FROM (
-			SELECT COALESCE(SUM(accrualorder), 0) AS sum_order,
-				   COALESCE(SUM(sum), 0) AS sum_withdraws
-			FROM public.orders
-			LEFT JOIN public.withdraws ON orders.login = withdraws.login
-			WHERE orders.login = $1
-		) AS s
-		WHERE s.sum_order >= s.sum_withdraws + $3;
-	`
-	result, err := PG.connect.ExecContext(ctx, query, withdraw.UserLogin, withdraw.NumberOrder, withdraw.Sum, withdraw.ProcessedAT)
+		    SELECT COALESCE(SUM(accrualorder), 0) AS sum_order
+		    FROM public.orders
+		    WHERE login = $1
+		) AS orders,
+		(
+		    SELECT COALESCE(SUM(sum), 0) AS sum_withdraws
+		    FROM public.withdraws
+		    WHERE login = $1
+		) AS withdraws
+	`).Scan(&canWithdraw)
 	if err != nil {
 		return err
 	}
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if rowsAffected == 0 {
+	if !canWithdraw {
 		return consta.ErrorStatusShortfallAccount
 	}
+
+	_, err = PG.connect.ExecContext(ctx, `
+		INSERT INTO public.withdraws (login, numberorder, sum, uploaded)
+		VALUES ($1, $2, $3, $4)
+	`, withdraw.UserLogin, withdraw.NumberOrder, withdraw.Sum, withdraw.ProcessedAT)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
