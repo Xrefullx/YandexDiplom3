@@ -44,12 +44,12 @@ func main() {
 		zap.Bool("ReleaseMOD", cfg.ReleaseMOD),
 	)
 	zapLogger.Debug("full configuration", zap.Any("config", cfg))
-	if err = container.ContainerBuild(cfg, zapLogger); err != nil {
+	if err = container.BuildContainer(cfg, zapLogger); err != nil {
 		zapLogger.Fatal("error starting the Di container", zap.Error(err))
 	}
 	defer func() {
 		if err = container.GetStorage().Close(); err != nil {
-			zapLogger.Fatal(consta.ErrorDataBase, zap.Error(err))
+			zapLogger.Fatal(consta.ErrorWorkDataBase, zap.Error(err))
 		}
 	}()
 	go func() {
