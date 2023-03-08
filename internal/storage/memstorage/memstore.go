@@ -102,7 +102,7 @@ func (MS *MemStorage) GetOrdersProcess(_ context.Context) ([]models.Order, error
 		if v.Status == consta.OrderStatusPROCESSING ||
 			v.Status == consta.OrderStatusNEW ||
 			v.Status == consta.OrderStatusREGISTERED ||
-			v.Status == consta.OrderStatusInvalid {
+			v.Status == consta.OrderStatusINVALID {
 			orders = append(orders, v)
 		}
 	}
