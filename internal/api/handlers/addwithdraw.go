@@ -16,11 +16,6 @@ import (
 	"time"
 )
 
-type Response struct {
-	Message string `json:"message"`
-	Status  int    `json:"status"`
-}
-
 func AddWithdraw(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), consta.TimeOutRequest)
 	defer cancel()
@@ -33,41 +28,41 @@ func AddWithdraw(c *gin.Context) {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		log.Error(consta.ErrorReadBody, zap.Error(err))
-		c.JSON(http.StatusInternalServerError, Response{Message: consta.ErrorReadBody, Status: http.StatusInternalServerError})
+		c.String(http.StatusInternalServerError, consta.ErrorReadBody)
 		return
 	}
 	var withdraw models.Withdraw
 	err = json.Unmarshal(body, &withdraw)
 	if err != nil {
 		log.Error(consta.ErrorBody, zap.Error(err))
-		c.JSON(http.StatusInternalServerError, Response{Message: consta.ErrorBody, Status: http.StatusInternalServerError})
+		c.String(http.StatusInternalServerError, consta.ErrorBody)
 		return
 	}
 	withdraw.ProcessedAT, withdraw.UserLogin = time.Now(), user
-	log.Debug("a request has been received for debiting funds",
+	log.Debug("поступил запрос на списание средств",
 		zap.Any("withdraw", withdraw),
 		zap.String("loginUser", user))
 	numberOrder, err := strconv.Atoi(withdraw.NumberOrder)
 	if err != nil {
-		log.Debug("order number conversion error", zap.Any("withdraw", withdraw))
-		c.String(http.StatusInternalServerError, "order number conversion error")
+		log.Debug("ошибка преобразования номера заказа", zap.Any("withdraw", withdraw))
+		c.String(http.StatusInternalServerError, "ошибка преобразования номера заказа")
 		return
 	}
 	if !utils.LuhValid(numberOrder) {
 		log.Debug(consta.ErrorNumberValidLuhn, zap.Error(err), zap.Int("numberOrder", numberOrder))
-		c.JSON(http.StatusUnprocessableEntity, Response{Message: consta.ErrorNumberValidLuhn, Status: http.StatusUnprocessableEntity})
+		c.String(http.StatusUnprocessableEntity, consta.ErrorNumberValidLuhn)
 		return
 	}
 	err = storage.AddWithdraw(ctx, withdraw)
 	if err != nil {
 		if errors.Is(err, consta.ErrorStatusShortfallAccount) {
-			c.JSON(http.StatusPaymentRequired, Response{Message: consta.ErrorStatusShortfallAccount.Error(), Status: http.StatusPaymentRequired})
+			c.String(http.StatusPaymentRequired, consta.ErrorStatusShortfallAccount.Error())
 			return
 		}
 		log.Error(consta.ErrorDataBase, zap.Error(err), zap.String("func", "AddWithdraw"))
-		c.JSON(http.StatusInternalServerError, Response{Message: consta.ErrorDataBase, Status: http.StatusInternalServerError})
+		c.String(http.StatusInternalServerError, consta.ErrorDataBase)
 		return
 	}
-	log.Debug("the write-off has been completed", zap.Any("withdraw", withdraw))
-	c.JSON(http.StatusOK, Response{Message: "the write-off has been completed", Status: http.StatusOK})
+	log.Debug("списание совершено", zap.Any("withdraw", withdraw))
+	c.String(http.StatusOK, "списание совершено")
 }
