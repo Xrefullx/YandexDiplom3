@@ -191,10 +191,16 @@ func (PG *PgStorage) GetUserBalance(ctx context.Context, userLogin string) (floa
 
 func (PG *PgStorage) AddWithdraw(ctx context.Context, withdraw models.Withdraw) error {
 	result, err := PG.connect.ExecContext(ctx, `
-		INSERT INTO public.withdraws (login, numberorder, sum, uploaded)
-		VALUES ($1, $2, $3, $4)
+	insert into public.withdraws (login, numberorder, sum, uploaded)
+	select $1, $2, $3, $4
+	where (
+          select sum_order >= sum_withdraws + $3 from (
+          select (case when sum_order is null then 0 else sum_order end ) as sum_order,
+          (case when sum_withdraws is null then 0 else sum_withdraws end ) as sum_withdraws from
+          (select sum(accrualorder) as  sum_order from public.orders where login = $1) as orders,
+          (select sum(sum) as  sum_withdraws from public.withdraws where login = $1) as withdraws) as s
+          );
 	`, withdraw.UserLogin, withdraw.NumberOrder, withdraw.Sum, withdraw.ProcessedAT)
-
 	if err != nil {
 		return err
 	}

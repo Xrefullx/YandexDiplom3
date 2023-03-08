@@ -16,6 +16,11 @@ import (
 	"time"
 )
 
+type Response struct {
+	Message string `json:"message"`
+	Status  int    `json:"status"`
+}
+
 func AddWithdraw(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), consta.TimeOutRequest)
 	defer cancel()
@@ -28,14 +33,14 @@ func AddWithdraw(c *gin.Context) {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		log.Error(consta.ErrorReadBody, zap.Error(err))
-		c.String(http.StatusInternalServerError, consta.ErrorReadBody)
+		c.JSON(http.StatusInternalServerError, Response{Message: consta.ErrorReadBody, Status: http.StatusInternalServerError})
 		return
 	}
 	var withdraw models.Withdraw
 	err = json.Unmarshal(body, &withdraw)
 	if err != nil {
 		log.Error(consta.ErrorBody, zap.Error(err))
-		c.String(http.StatusInternalServerError, consta.ErrorBody)
+		c.JSON(http.StatusInternalServerError, Response{Message: consta.ErrorBody, Status: http.StatusInternalServerError})
 		return
 	}
 	withdraw.ProcessedAT, withdraw.UserLogin = time.Now(), user
@@ -50,19 +55,19 @@ func AddWithdraw(c *gin.Context) {
 	}
 	if !utils.LuhValid(numberOrder) {
 		log.Debug(consta.ErrorNumberValidLuhn, zap.Error(err), zap.Int("numberOrder", numberOrder))
-		c.String(http.StatusUnprocessableEntity, consta.ErrorNumberValidLuhn)
+		c.JSON(http.StatusUnprocessableEntity, Response{Message: consta.ErrorNumberValidLuhn, Status: http.StatusUnprocessableEntity})
 		return
 	}
 	err = storage.AddWithdraw(ctx, withdraw)
 	if err != nil {
 		if errors.Is(err, consta.ErrorStatusShortfallAccount) {
-			c.String(http.StatusPaymentRequired, consta.ErrorStatusShortfallAccount.Error())
+			c.JSON(http.StatusPaymentRequired, Response{Message: consta.ErrorStatusShortfallAccount.Error(), Status: http.StatusPaymentRequired})
 			return
 		}
 		log.Error(consta.ErrorDataBase, zap.Error(err), zap.String("func", "AddWithdraw"))
-		c.String(http.StatusInternalServerError, consta.ErrorDataBase)
+		c.JSON(http.StatusInternalServerError, Response{Message: consta.ErrorDataBase, Status: http.StatusInternalServerError})
 		return
 	}
 	log.Debug("the write-off has been completed", zap.Any("withdraw", withdraw))
-	c.String(http.StatusOK, "the write-off has been completed")
+	c.JSON(http.StatusOK, Response{Message: "the write-off has been completed", Status: http.StatusOK})
 }
