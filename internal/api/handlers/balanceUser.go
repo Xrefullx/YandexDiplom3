@@ -20,8 +20,8 @@ func UserBalance(c *gin.Context) {
 
 	sum, spent, err := storage.GetUserBalance(ctx, user)
 	if err != nil {
-		log.Error(consta.ErrorDataBase, zap.Error(err), zap.String("func", "GetUserBalance"))
-		c.String(http.StatusInternalServerError, consta.ErrorDataBase)
+		log.Error(consta.ErrorWorkDataBase, zap.Error(err), zap.String("func", "GetUserBalance"))
+		c.String(http.StatusInternalServerError, consta.ErrorWorkDataBase)
 		return
 	}
 	response := map[string]float64{

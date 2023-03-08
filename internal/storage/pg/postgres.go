@@ -150,7 +150,7 @@ func (PS *PgStorage) AddOrder(ctx context.Context, numberOrder string, order mod
 
 func (PS *PgStorage) GetOrdersProcess(ctx context.Context) ([]models.Order, error) {
 	var orders []models.Order
-	sliceStatus := []interface{}{consta.OrderStatusPROCESSING, consta.OrderStatusNEW, consta.OrderStatusREGISTERED, consta.OrderStatusInvalid}
+	sliceStatus := []interface{}{consta.OrderStatusPROCESSING, consta.OrderStatusNEW, consta.OrderStatusREGISTERED, consta.OrderStatusINVALID}
 	rows, err := PS.connect.QueryContext(ctx, `select number_order, login_user, status_order, accrual_order, uploaded_order
 	from public.orders where status_order in ($1, $2, $3,$4)`, sliceStatus...)
 	if err != nil {

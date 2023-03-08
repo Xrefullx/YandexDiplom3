@@ -5,7 +5,6 @@ import (
 	"github.com/Xrefullx/YandexDiplom3/internal/storage"
 	"github.com/Xrefullx/YandexDiplom3/internal/storage/memstorage"
 	"github.com/Xrefullx/YandexDiplom3/internal/storage/pg"
-
 	_ "github.com/lib/pq"
 	"github.com/sarulabs/di"
 	"go.uber.org/zap"
@@ -13,7 +12,7 @@ import (
 
 var DiContainer di.Container
 
-func ContainerBuild(cfg models.Config, logger *zap.Logger) error {
+func BuildContainer(cfg models.Config, logger *zap.Logger) error {
 	builder, err := di.NewBuilder()
 	if err != nil {
 		return err

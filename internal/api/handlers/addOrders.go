@@ -17,7 +17,7 @@ import (
 	"time"
 )
 
-func AddOrders(c *gin.Context) {
+func AddUserOrders(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), consta.TimeOutRequest)
 	defer cancel()
 	if !utils.ValidContent(c, "text/plain") {
@@ -35,11 +35,11 @@ func AddOrders(c *gin.Context) {
 	var numberOrder int
 	err = json.Unmarshal(body, &numberOrder)
 	if err != nil {
-		log.Error(consta.ErrorBody, zap.Error(err))
-		c.String(http.StatusInternalServerError, consta.ErrorBody)
+		log.Error(consta.ErrorUnmarshalBody, zap.Error(err))
+		c.String(http.StatusInternalServerError, consta.ErrorUnmarshalBody)
 		return
 	}
-	log.Debug("the order number has been received",
+	log.Debug("поступил номер заказа",
 		zap.Int("numberOrder", numberOrder),
 		zap.String("loginUser", user))
 	if !utils.LuhValid(numberOrder) {
@@ -59,23 +59,23 @@ func AddOrders(c *gin.Context) {
 		if errors.Is(err, consta.ErrorNoUNIQUE) {
 			order, errGet := storage.GetOrder(ctx, numberOrderStr)
 			if errGet != nil {
-				log.Error(consta.ErrorDataBase, zap.Error(errGet), zap.String("func", "GetOrder"))
-				c.String(http.StatusInternalServerError, consta.ErrorDataBase)
+				log.Error(consta.ErrorWorkDataBase, zap.Error(errGet), zap.String("func", "GetOrder"))
+				c.String(http.StatusInternalServerError, consta.ErrorWorkDataBase)
 				return
 			}
 			if order.UserLogin == user {
-				log.Debug("the order number has already been uploaded by this user", zap.Any("order", order))
-				c.String(http.StatusOK, "the order number has already been uploaded by this user")
+				log.Debug("номер заказа уже был загружен этим пользователем", zap.Any("order", order))
+				c.String(http.StatusOK, "номер заказа уже был загружен этим пользователем")
 				return
 			}
-			log.Debug("the order number has already been uploaded by another user", zap.Any("order", order))
-			c.String(http.StatusConflict, "the order number has already been uploaded by another user")
+			log.Debug("номер заказа уже был загружен другим пользователем", zap.Any("order", order))
+			c.String(http.StatusConflict, "номер заказа уже был загружен другим пользователем")
 			return
 		}
-		log.Error(consta.ErrorDataBase, zap.Error(err), zap.String("func", "AddOrder"))
-		c.String(http.StatusInternalServerError, consta.ErrorDataBase)
+		log.Error(consta.ErrorWorkDataBase, zap.Error(err), zap.String("func", "AddOrder"))
+		c.String(http.StatusInternalServerError, consta.ErrorWorkDataBase)
 		return
 	}
-	log.Debug("the new order number has been accepted for processing", zap.Any("number_order", numberOrder))
-	c.String(http.StatusAccepted, "the new order number has been accepted for processing")
+	log.Debug("новый номер заказа принят в обработку", zap.Any("number_order", numberOrder))
+	c.String(http.StatusAccepted, "новый номер заказа принят в обработку")
 }

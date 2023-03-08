@@ -23,25 +23,25 @@ func Login(c *gin.Context) {
 	storage := container.GetStorage()
 	var user models.User
 	if err := c.Bind(&user); err != nil {
-		log.Error(consta.ErrorBody, zap.Error(err))
-		c.String(http.StatusInternalServerError, consta.ErrorBody)
+		log.Error(consta.ErrorUnmarshalBody, zap.Error(err))
+		c.String(http.StatusInternalServerError, consta.ErrorUnmarshalBody)
 		return
 	}
-	log.Debug("user authorization", zap.Any("user", user))
+	log.Debug("авторизация пользователя", zap.Any("user", user))
 	if user.Login == "" || user.Password == "" {
-		log.Debug("invalid username or password", zap.Any("user", user))
-		c.String(http.StatusBadRequest, "invalid username or password")
+		log.Debug("не валидные логин или пароль", zap.Any("user", user))
+		c.String(http.StatusBadRequest, "не валидные логин или пароль")
 		return
 	}
 	authenticationUser, err := storage.Authentication(ctx, user)
 	if err != nil {
-		log.Error(consta.ErrorDataBase, zap.Error(err))
-		c.String(http.StatusInternalServerError, consta.ErrorDataBase)
+		log.Error(consta.ErrorWorkDataBase, zap.Error(err))
+		c.String(http.StatusInternalServerError, consta.ErrorWorkDataBase)
 		return
 	}
 	if !authenticationUser {
-		log.Debug("the password or login is not correct", zap.Any("user", user))
-		c.String(http.StatusUnauthorized, "the password or login is not correct")
+		log.Debug("пароль или логин не верный", zap.Any("user", user))
+		c.String(http.StatusUnauthorized, "пароль или логин не верный")
 		return
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &models.Claims{
@@ -50,13 +50,13 @@ func Login(c *gin.Context) {
 			IssuedAt:  jwt.At(time.Now())},
 		Login: user.Login,
 	})
-	log.Debug("the user has successfully logged in",
+	log.Debug("пользователь успешно авторизовался",
 		zap.Any("user", user),
 		zap.Any("token", token))
 	accessToken, err := token.SignedString([]byte(container.GetConfig().SecretKey))
 	if err != nil {
-		log.Error("error token", zap.Error(err))
-		c.String(http.StatusInternalServerError, "error token")
+		log.Error("ошибка генерация токена", zap.Error(err))
+		c.String(http.StatusInternalServerError, "ошибка генерация токена")
 		return
 	}
 	c.Header("Authorization", "Bearer "+accessToken)

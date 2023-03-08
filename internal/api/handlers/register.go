@@ -23,11 +23,11 @@ func Register(c *gin.Context) {
 	storage := container.GetStorage()
 	var user models.User
 	if err := c.Bind(&user); err != nil {
-		log.Error(consta.ErrorBody, zap.Error(err))
-		c.String(http.StatusInternalServerError, consta.ErrorBody)
+		log.Error(consta.ErrorUnmarshalBody, zap.Error(err))
+		c.String(http.StatusInternalServerError, consta.ErrorUnmarshalBody)
 		return
 	}
-	log.Debug("register user", zap.Any("user", user))
+	log.Debug("регистрация пользователя", zap.Any("user", user))
 	if user.Login == "" || user.Password == "" {
 		c.AbortWithStatus(http.StatusBadRequest)
 		return
@@ -35,17 +35,17 @@ func Register(c *gin.Context) {
 	err := storage.Adduser(ctx, user)
 	if err != nil {
 		if errors.Is(err, consta.ErrorNoUNIQUE) {
-			log.Debug("a user with this username already exists", zap.Any("user", user))
-			c.String(http.StatusConflict, "a user with this username already exists")
+			log.Debug("пользователь с таким логином уже есть", zap.Any("user", user))
+			c.String(http.StatusConflict, "пользователь с таким логином уже есть")
 			return
 		}
-		log.Error(consta.ErrorDataBase, zap.Error(err), zap.String("func", "Adduser"))
-		c.String(http.StatusInternalServerError, consta.ErrorDataBase)
+		log.Error(consta.ErrorWorkDataBase, zap.Error(err), zap.String("func", "AddUser"))
+		c.String(http.StatusInternalServerError, consta.ErrorWorkDataBase)
 		return
 	}
 	//<-ctx.Done()
 	fmt.Println(errors.Is(ctx.Err(), context.DeadlineExceeded))
 	fmt.Println(errors.Is(ctx.Err(), context.Canceled))
-	log.Debug("the user has been successfully registered", zap.Any("user", user))
+	log.Debug("пользователь успешно зарегистрирован", zap.Any("user", user))
 	c.Redirect(http.StatusPermanentRedirect, "/api/user/login")
 }

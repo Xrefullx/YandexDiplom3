@@ -34,8 +34,8 @@ func AddWithdraw(c *gin.Context) {
 	var withdraw models.Withdraw
 	err = json.Unmarshal(body, &withdraw)
 	if err != nil {
-		log.Error(consta.ErrorBody, zap.Error(err))
-		c.String(http.StatusInternalServerError, consta.ErrorBody)
+		log.Error(consta.ErrorUnmarshalBody, zap.Error(err))
+		c.String(http.StatusInternalServerError, consta.ErrorUnmarshalBody)
 		return
 	}
 	withdraw.ProcessedAT, withdraw.UserLogin = time.Now(), user
@@ -59,8 +59,8 @@ func AddWithdraw(c *gin.Context) {
 			c.String(http.StatusPaymentRequired, consta.ErrorStatusShortfallAccount.Error())
 			return
 		}
-		log.Error(consta.ErrorDataBase, zap.Error(err), zap.String("func", "AddWithdraw"))
-		c.String(http.StatusInternalServerError, consta.ErrorDataBase)
+		log.Error(consta.ErrorWorkDataBase, zap.Error(err), zap.String("func", "AddWithdraw"))
+		c.String(http.StatusInternalServerError, consta.ErrorWorkDataBase)
 		return
 	}
 	log.Debug("списание совершено", zap.Any("withdraw", withdraw))

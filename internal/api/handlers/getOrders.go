@@ -9,24 +9,24 @@ import (
 	"net/http"
 )
 
-func GetOrders(c *gin.Context) {
+func GetUserOrders(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), consta.TimeOutRequest)
 	defer cancel()
 	log := container.GetLog()
 	storage := container.GetStorage()
 	user := c.Param("loginUser")
-	log.Debug("received a request to display orders",
+	log.Debug("поступил запрос на показ заказов",
 		zap.String("loginUser", user))
 
 	orders, err := storage.GetOrders(ctx, user)
 	if err != nil {
-		log.Error(consta.ErrorDataBase, zap.Error(err), zap.String("func", "GetOrders"))
-		c.String(http.StatusInternalServerError, consta.ErrorDataBase)
+		log.Error(consta.ErrorWorkDataBase, zap.Error(err), zap.String("func", "GetManyOrders"))
+		c.String(http.StatusInternalServerError, consta.ErrorWorkDataBase)
 		return
 	}
 	if len(orders) == 0 {
-		log.Debug("no data for request", zap.String("loginUser", user))
-		c.String(http.StatusNoContent, "no data for request")
+		log.Debug("нет данных для ответа", zap.String("loginUser", user))
+		c.String(http.StatusNoContent, "нет данных для ответа")
 		return
 	}
 	c.JSON(http.StatusOK, orders)

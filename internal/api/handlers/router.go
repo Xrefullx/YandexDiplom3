@@ -19,11 +19,11 @@ func Router(cfg models.Config) *gin.Engine {
 	{
 		gUser.POST("/register", Register)
 		gUser.POST("/login", Login)
-		gUser.POST("/orders", AddOrders)
-		gUser.GET("/orders", GetOrders)
+		gUser.POST("/orders", AddUserOrders)
+		gUser.GET("/orders", GetUserOrders)
 		gUser.GET("/balance", UserBalance)
 		gUser.POST("/balance/withdraw", AddWithdraw)
-		gUser.GET("/withdrawals", GetWithdraws)
+		gUser.GET("/withdrawals", GetUserWithdraws)
 	}
 	return r
 }
