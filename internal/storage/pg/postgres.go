@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/Xrefullx/YandexDiplom3/internal/api/consta"
 	"github.com/Xrefullx/YandexDiplom3/internal/models"
 )
@@ -190,26 +191,37 @@ func (PG *PgStorage) GetUserBalance(ctx context.Context, userLogin string) (floa
 }
 
 func (PG *PgStorage) AddWithdraw(ctx context.Context, withdraw models.Withdraw) error {
-	result, err := PG.connect.ExecContext(ctx, `
-	insert into public.withdraws (login, numberorder, sum, uploaded)
-	select $1, $2, $3, $4
-	where (
-          select sum_order >= sum_withdraws + $3 from (
-          select (case when sum_order is null then 0 else sum_order end ) as sum_order,
-          (case when sum_withdraws is null then 0 else sum_withdraws end ) as sum_withdraws from
-          (select sum(accrualorder) as  sum_order from public.orders where login = $1) as orders,
-          (select sum(sum) as  sum_withdraws from public.withdraws where login = $1) as withdraws) as s
-          );
-	`, withdraw.UserLogin, withdraw.NumberOrder, withdraw.Sum, withdraw.ProcessedAT)
+	shortfallAccountError := fmt.Errorf("%s: %s", consta.ErrorStatusShortfallAccount, withdraw.UserLogin)
+	// Запрос для получения суммы накопленных средств пользователя
+	selectQuery := `
+    SELECT COALESCE(SUM(accrualorder), 0) as sum_order FROM public.orders WHERE login = $1
+    `
+	var sumOrder float64
+	err := PG.connect.QueryRowContext(ctx, selectQuery, withdraw.UserLogin).Scan(&sumOrder)
 	if err != nil {
 		return err
 	}
-	affected, err := result.RowsAffected()
+	// Запрос для получения суммы уже запрошенных средств пользователя
+	selectQuery = `
+    SELECT COALESCE(SUM(sum), 0) as sum_withdraws FROM public.withdraws WHERE login = $1
+    `
+	var sumWithdraws float64
+	err = PG.connect.QueryRowContext(ctx, selectQuery, withdraw.UserLogin).Scan(&sumWithdraws)
 	if err != nil {
 		return err
 	}
-	if affected == 0 {
-		return consta.ErrorStatusShortfallAccount
+	// Проверяем, что сумма накопленных средств пользователя не меньше запрашиваемой суммы
+	if sumOrder < sumWithdraws+withdraw.Sum {
+		return shortfallAccountError
+	}
+	// Запрос на добавление новой записи о запрошенных средствах пользователя
+	insertQuery := `
+    INSERT INTO public.withdraws (login, numberorder, sum, uploaded)
+    VALUES ($1, $2, $3, $4)
+    `
+	_, err = PG.connect.ExecContext(ctx, insertQuery, withdraw.UserLogin, withdraw.NumberOrder, withdraw.Sum, withdraw.ProcessedAT)
+	if err != nil {
+		return err
 	}
 	return nil
 }
