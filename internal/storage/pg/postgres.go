@@ -4,8 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"github.com/Xrefullx/yandexDiplom2/internal/api/consta"
-	"github.com/Xrefullx/yandexDiplom2/internal/models"
+	"github.com/Xrefullx/YandexDiplom3/internal/api/consta"
+	"github.com/Xrefullx/YandexDiplom3/internal/models"
 )
 
 type PgStorage struct {
