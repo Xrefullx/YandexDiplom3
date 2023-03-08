@@ -189,27 +189,49 @@ func (PG *PgStorage) GetUserBalance(ctx context.Context, userLogin string) (floa
 }
 
 func (PG *PgStorage) AddWithdraw(ctx context.Context, withdraw models.Withdraw) error {
-	result, err := PG.connect.ExecContext(ctx, `
-	insert into public.withdraws (login, numberorder, sum, uploaded)
-	select $1, $2, $3, $4
-	where (
-          select sum_order >= sum_withdraws + $3 from (
-          select (case when sum_order is null then 0 else sum_order end ) as sum_order,
-          (case when sum_withdraws is null then 0 else sum_withdraws end ) as sum_withdraws from
-          (select sum(accrualorder) as  sum_order from public.orders where login = $1) as orders,
-          (select sum(sum) as  sum_withdraws from public.withdraws where login = $1) as withdraws) as s
-          );
-	`, withdraw.UserLogin, withdraw.NumberOrder, withdraw.Sum, withdraw.ProcessedAT)
+	query := `
+		WITH s AS (
+			SELECT
+				(CASE WHEN sum_order IS NULL THEN 0 ELSE sum_order END) AS sum_order,
+				(CASE WHEN sum_withdraws IS NULL THEN 0 ELSE sum_withdraws END) AS sum_withdraws
+			FROM (
+				SELECT SUM(accrualorder) AS sum_order
+				FROM public.orders
+				WHERE login = $1
+			) AS orders,
+			(
+				SELECT SUM(sum) AS sum_withdraws
+				FROM public.withdraws
+				WHERE login = $1
+			) AS withdraws
+		)
+		INSERT INTO public.withdraws (login, numberorder, sum, uploaded)
+		SELECT $1, $2, $3, $4
+		WHERE (SELECT sum_order >= sum_withdraws + $3 FROM s);
+	`
+	// Acquire a connection from the pool
+	conn, err := PG.connect.Conn(ctx)
 	if err != nil {
 		return err
 	}
+	// Defer the closure of the connection
+	defer conn.Close()
+
+	// Execute the query
+	result, err := conn.ExecContext(ctx, query, withdraw.UserLogin, withdraw.NumberOrder, withdraw.Sum, withdraw.ProcessedAT)
+	if err != nil {
+		return err
+	}
+	// Check the number of affected rows
 	affected, err := result.RowsAffected()
 	if err != nil {
 		return err
 	}
+	// Check if any row is affected
 	if affected == 0 {
 		return consta.ErrorStatusShortfallAccount
 	}
+	// Return nil for success
 	return nil
 }
 
